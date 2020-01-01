@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <title>Pokemon GO Sunrise/Sunset Calculator</title>
+    <base target="_top">
+    <!-- By Cosk62, based on research on https://thesilphroad.com/science/quick-discovery/sunrise-sunset-times-determined/
+      with code snippets from stackoverflow.com -->
+  </head>
+  <body>
+    <script>
+    Date.prototype.toDateInputValue = (function() {
+      var local = new Date(this);
+      local.setMinutes(this.getMinutes() - this.getTimezoneOffset());
+      return local.toJSON().slice(0,10);
+    });
+    function autoFillLocation() {
+      navigator.geolocation.getCurrentPosition(onPosition);
+    }
+    function onPosition(pos) {
+      document.getElementById("lat").value = pos.coords.latitude;
+      document.getElementById("long").value = pos.coords.longitude;
+      computeSun();
+    }
+    function autoFillDate() {
+      document.getElementById("date").value = new Date().toDateInputValue();
+      computeSun();
+    }
+    function autoFillTZ() {
+      var tz = new Date(document.getElementById("date").value).getTimezoneOffset();
+      document.getElementById("tz").value = -tz/60;
+      computeSun();
+    }
+    
+    function computeSun() {
+      var lat = document.getElementById("lat").value;
+      var long = document.getElementById("long").value;
+      var date = new Date(document.getElementById("date").value);
+      var tz = document.getElementById("tz").value;
+      var sun;
+      try {
+        if ( !isNumeric(tz) )
+          throw "Timezone is not a number";
+        sun = getSunriseSunset(lat, long, date);
+      } catch ( e ) {
+        document.getElementById("sunrise").innerHTML = e;
+        document.getElementById("sunset").innerHTML = "";
+      }
+      document.getElementById("sunrise").innerHTML = formatTime(sun[0], tz);
+      document.getElementById("sunset").innerHTML = formatTime(sun[1], tz);
+    }
+    
+    function getSunriseSunset(lat, long, date) {
+      if ( !isNumeric(lat) )
+        throw "Latitude is not a number";
+      if ( !isNumeric(long) )
+        throw "Longitude is not a number";
+      var dt = new Date(date);
+      if ( isNaN(dt) )
+        throw "Invalid date";
+      var snoon = 720 - 4*long;
+      var jan1 = new Date(dt.getUTCFullYear(), 0);
+      var noTime = new Date(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+      var d = (noTime.getTime()-jan1.getTime()) / (3600*24*1000);
+      var decl = -23.45*Math.cos(radians(360/365*(d+10)));
+      var cos_o = -Math.tan(radians(lat))*Math.tan(radians(decl));
+      if ( cos_o > 1 )
+        throw "24 hour night";
+      if ( cos_o < -1 )
+        throw "24 hour day";
+      var o = degrees(Math.acos(cos_o));
+      return [snoon-4*o, snoon+4*o];
+    }
+    
+    function isNumeric(n) {
+      return !isNaN(parseFloat(n)) && isFinite(n);
+    }
+    
+    function radians(degrees) {
+      return degrees * Math.PI / 180;
+    }
+    function degrees(radians) {
+      return radians / Math.PI * 180;
+    }
+    function formatTime(minutes, tz) {
+      var totalSeconds = Math.round((minutes + tz*60)*60);
+      var hours = Math.floor(totalSeconds/3600);
+      var minutesAfterHour = Math.floor((totalSeconds-hours*3600)/60);
+      var seconds = totalSeconds - hours*3600 - minutesAfterHour*60;
+      return ii(hours, 2) + ":" + ii(minutesAfterHour, 2) + ":" + ii(seconds, 2);
+    }
+    function ii(i, len) {
+      var s = i + "";
+      while (s.length < len) s = "0" + s;
+      return s;
+    }
+
+    </script>
+    <form id="dataForm">
+    <table>
+    <tr><td>Latitude:</td><td><input type="number" id="lat" style="width: 12em;" onchange="computeSun()" /></td>
+      <td rowspan="2"><input type="button" value="&#8592;Fill" onclick="autoFillLocation()" /></td></tr>
+    <tr><td>Longitude:</td><td><input type="number" id="long" style="width: 12em;" onchange="computeSun()" /></td></tr>
+    <tr><td>Date:</td><td><input type="date" id="date" style="width: 12em;" onchange="computeSun()" /></td>
+      <td><input type="button" value="&#8592;Fill" onclick="autoFillDate()" /></td></tr>
+    <script>autoFillDate();</script>
+    <tr><td>Time zone:</td><td><input type="number" id="tz" style="width: 12em;" onchange="computeSun()" /></td>
+      <td><input type="button" value="&#8592;Fill" onclick="autoFillTZ()" /></td></tr>
+    <script>autoFillTZ();</script>
+    <tr><td>Sunrise</td><td colspan="2"><div id="sunrise" /></td></tr>
+    <tr><td>Sunset</td><td colspan="2"><div id="sunset" /></td></tr>
+    </table>
+    </form>
+    <script>computeSun();</script>
+  </body>
+</html>
