@@ -15,12 +15,29 @@
       return local.toJSON().slice(0,10);
     });
     function autoFillLocation() {
-      navigator.geolocation.getCurrentPosition(onPosition);
+      navigator.geolocation.getCurrentPosition(onPosition, onPositionError);
     }
     function onPosition(pos) {
       document.getElementById("lat").value = pos.coords.latitude;
       document.getElementById("long").value = pos.coords.longitude;
       computeSun();
+    }
+    function onPositionError(cause) {
+      var msg = "Cannot obtain your location: ";
+      switch ( cause.code ) {
+      case cause.PERMISSION_DENIED:
+        msg += "permission denied";
+        break;
+      case cause.POSITION_UNAVAILABLE:
+        msg += "location not available";
+        break;
+      case cause.TIMEOUT:
+        msg += "location request timed out";
+        break;
+      default:
+        msg += cause.message;
+      }
+      showError(msg +". Please enter coordinates manually.");
     }
     function autoFillDate() {
       document.getElementById("date").value = new Date().toDateInputValue();
@@ -43,13 +60,24 @@
           throw "Timezone is not a number";
         sun = getSunriseSunset(lat, long, date);
       } catch ( e ) {
-        document.getElementById("sunrise").innerHTML = e;
-        document.getElementById("sunset").innerHTML = "";
+        showError(e);
+        return;
       }
       document.getElementById("sunrise").innerHTML = formatTime(sun[0], tz);
       document.getElementById("sunset").innerHTML = formatTime(sun[1], tz);
+      hideError();
     }
-    
+    function showError(e) {
+      document.getElementById("errorMsg").innerHTML = e;
+      document.getElementById("errorMsg").style.visibility = "visible";
+      document.getElementById("output").style.visibility = "hidden";
+    }
+    function hideError() {
+      document.getElementById("errorMsg").innerHTML = "";
+      document.getElementById("errorMsg").style.visibility = "hidden";
+      document.getElementById("output").style.visibility = "visible";
+    }
+
     function getSunriseSunset(lat, long, date) {
       if ( !isNumeric(lat) )
         throw "Latitude is not a number";
@@ -99,18 +127,23 @@
     <form id="dataForm">
     <table>
     <tr><td>Latitude:</td><td><input type="number" id="lat" style="width: 12em;" onchange="computeSun()" /></td>
-      <td rowspan="2"><input type="button" value="&#8592;Fill" onclick="autoFillLocation()" /></td></tr>
+      <td rowspan="2"><input type="button" value="&#8592;My Location" onclick="autoFillLocation()" /></td></tr>
     <tr><td>Longitude:</td><td><input type="number" id="long" style="width: 12em;" onchange="computeSun()" /></td></tr>
     <tr><td>Date:</td><td><input type="date" id="date" style="width: 12em;" onchange="computeSun()" /></td>
-      <td><input type="button" value="&#8592;Fill" onclick="autoFillDate()" /></td></tr>
+      <td><input type="button" value="&#8592;Today" onclick="autoFillDate()" /></td></tr>
     <script>autoFillDate();</script>
     <tr><td>Time zone:</td><td><input type="number" id="tz" style="width: 12em;" onchange="computeSun()" /></td>
-      <td><input type="button" value="&#8592;Fill" onclick="autoFillTZ()" /></td></tr>
+      <td><input type="button" value="&#8592;My TZ" onclick="autoFillTZ()" /></td></tr>
     <script>autoFillTZ();</script>
-    <tr><td>Sunrise</td><td colspan="2"><div id="sunrise" /></td></tr>
-    <tr><td>Sunset</td><td colspan="2"><div id="sunset" /></td></tr>
     </table>
     </form>
+    <div id="errorMsg" style="visibility:hidden"></div>
+    <div id="output">
+    <table>
+    <tr><td>Sunrise:<div style="width:4em" /></td><td><div id="sunrise" /></td></tr>
+    <tr><td>Sunset:<div style="width:4em" /></td><td><div id="sunset" /></td></tr>
+    </table>
+    </div>
     <script>computeSun();</script>
   </body>
 </html>
